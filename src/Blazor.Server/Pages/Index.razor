@@ -1,0 +1,216 @@
+﻿@page "/"
+@using SixLabors.ImageSharp
+@using SixLabors.ImageSharp.Drawing.Processing
+@using SixLabors.ImageSharp.PixelFormats
+@using SixLabors.ImageSharp.Processing
+@using System.IO.Compression
+
+@code {
+
+    private string? Image64 { get; set; }
+    private string? ImageAddress { get; set; }
+    private int ActivePalette { get; set; } = 0;
+
+    protected override void OnInitialized()
+    {
+        ActivePalette = new Random().Next(3);
+        GenerateRandomImage();
+        Console.WriteLine("Hello");
+        base.OnInitialized();
+    }
+
+    private byte[] Compress(byte[] data)
+    {
+        MemoryStream output = new MemoryStream();
+        using (DeflateStream dstream = new DeflateStream(output, CompressionLevel.Optimal))
+        {
+            dstream.Write(data, 0, data.Length);
+        }
+        return output.ToArray();
+    }
+
+    private byte[] Decompress(byte[] data)
+    {
+        MemoryStream input = new MemoryStream(data);
+        MemoryStream output = new MemoryStream();
+        using (DeflateStream dstream = new DeflateStream(input, CompressionMode.Decompress))
+        {
+            dstream.CopyTo(output);
+        }
+        return output.ToArray();
+    }
+
+    private readonly Color[] _gryPalette = 
+    {
+        Color.FromRgb(0,0,0),
+        Color.FromRgb(85,255,85),
+        Color.FromRgb(255,85,85),
+        Color.FromRgb(255,255,85),
+    };
+    
+    private readonly Color[] _cmwPalette = 
+    {
+        Color.FromRgb(0,0,0),
+        Color.FromRgb(85,255,255),
+        Color.FromRgb(255,85,255),
+        Color.FromRgb(255,255,255),
+    };
+    
+    private readonly Color[] _crwPalette = 
+    {
+        Color.FromRgb(0,0,0),
+        Color.FromRgb(85,255,255),
+        Color.FromRgb(255,85,85),
+        Color.FromRgb(255,255,255),
+    };
+
+    private void CyclePalette()
+    {
+        ActivePalette++;
+        if (ActivePalette > 2) ActivePalette = 0;
+        GenerateImageFromAddress(ImageAddress);
+    }
+
+    private void GenerateImageFromAddress(string address)
+    {
+        var bytes = DecompressImage(address);
+        GenerateImage(bytes);
+    }
+
+    private void GenerateRandomImage(int? seed = null)
+    {
+        var rnd = seed.HasValue ? new Random(seed.Value) : new Random();
+        var target = 160 * 200;
+        var bytes = new byte[target];
+        for (var i = 0; i < target; i++)
+        {
+            bytes[i] = (byte)rnd.Next(4);
+        }
+        
+        GenerateImage(bytes);
+    }
+    
+    private void GenerateImage(byte[] bytes)
+    {
+
+        var palettes = new[]
+        {
+            _gryPalette,
+            _cmwPalette,
+            _crwPalette
+        };
+        var colors = palettes[ActivePalette];
+
+        using (MemoryStream outStream = new MemoryStream())
+        {
+            var imageWidth = 160;
+            var imageHeight = 200;
+            var columns = 160;
+            var rows = 200;
+            var pixelWidth = imageWidth / columns;
+            var pixelHeight = imageHeight / rows;
+            
+            var image = new Image<Rgba32>(imageWidth, imageHeight);
+
+            var brushes = colors.Select(x => Brushes.Solid(x)).ToArray();
+
+            for (int x = 0; x < columns; x++)
+            {
+                for (int y = 0; y < rows; y++)
+                {
+                    var pixelIndex = (y * columns) + x;
+                    var brushIndex = bytes[pixelIndex];
+
+                    var brush = brushes[brushIndex];
+                    var tX = x * pixelWidth;
+                    var tY = y * pixelHeight;
+                    
+                    var rectangle = new Rectangle(tX, tY, pixelWidth, pixelHeight);
+            
+                    image.Mutate(img => img.Fill(brush, rectangle));
+                }
+            }
+
+            ImageAddress = CompressImage(bytes);
+
+            image.SaveAsPng(outStream);
+            Image64 = "data:image/png;base64, " + Convert.ToBase64String(outStream.ToArray());
+        }
+        
+    }
+
+    private byte[] DecompressImage(string data)
+    {
+        var compressedByteData = Convert.FromBase64String(data);
+        var decompressedByteData = Decompress(compressedByteData);
+        var outputData = new byte[160 * 200];
+
+        int outputIndex = 0;
+        foreach (var b in decompressedByteData)
+        {
+            outputData[outputIndex++] = (byte)(b & 0b_0000_0011);
+            outputData[outputIndex++] = (byte)((b & 0b_0000_1100) >> 2);
+            if(outputIndex < 32000) outputData[outputIndex++] = (byte)((b & 0b_0011_0000) >> 4);
+        }
+        return outputData;
+    }
+
+    private string CompressImage(byte[] data)
+    {
+        List<byte> output = new();
+        var byteIndex = 0;
+        byte i = 0;
+        foreach (var b in data)
+        {
+
+            switch (byteIndex)
+            {
+                case 0:
+                    i |= (byte)(b);
+                    break;
+                case 1:
+                    i |= (byte)(b << 2);
+                    break;
+                case 2: 
+                    i |= (byte)(b << 4);
+                    break;
+            }
+                
+            byteIndex++;
+            if (byteIndex > 2)
+            {
+                output.Add(i);
+                byteIndex = 0;
+                i = 0;
+            }
+        }
+
+        if (byteIndex > 0)
+        {
+            output.Add(i);
+        }
+        
+        var compressed = Compress(output.ToArray());
+
+        return Convert.ToBase64String(compressed);
+    }
+    
+}
+
+
+
+<PageTitle>CGA Babel</PageTitle>
+
+<div>
+    <button type="button" class="px-4 py-2 bg-blue-500 text-white m-4" @onclick="() => CyclePalette()">Cycle Palette</button>    
+    <button type="button" class="px-4 py-2 bg-blue-500 text-white m-4" @onclick="() => GenerateRandomImage()">Generate Random</button>
+</div>
+
+
+@if (!string.IsNullOrEmpty(Image64))
+{
+    <img src="@Image64" style="width: 640px; height:  400px; image-rendering: pixelated;"/>
+    <div style="overflow-wrap: anywhere" class="border rounded p-4 my-2 font-mono text-xs">
+        ImageAddress @ImageAddress
+    </div>
+}
