@@ -1,0 +1,242 @@
+﻿@page "/"
+@using SixLabors.ImageSharp
+@using CGAOB
+@code {
+
+    private string? Image64 { get; set; }
+    private string? ImageAddress { get; set; }
+    private int ActivePalette { get; set; } = 0;
+    private readonly int _imageWidth = 160;
+    private readonly int _imageHeight = 200;
+    private bool Loading { get; set; }
+    private bool ShowExport { get; set; } = false;
+    private bool ShowImport { get; set; } = false;
+    private string ImportImageAddress { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        ActivePalette = new Random().Next(3);
+        await GenerateRandomImage();
+        await base.OnInitializedAsync();
+    }
+
+    private readonly Color[] _gryPalette = 
+    {
+        Color.FromRgb(0,0,0),
+        Color.FromRgb(85,255,85),
+        Color.FromRgb(255,85,85),
+        Color.FromRgb(255,255,85),
+    };
+    
+    private readonly Color[] _cmwPalette = 
+    {
+        Color.FromRgb(0,0,0),
+        Color.FromRgb(85,255,255),
+        Color.FromRgb(255,85,255),
+        Color.FromRgb(255,255,255),
+    };
+    
+    private readonly Color[] _crwPalette = 
+    {
+        Color.FromRgb(0,0,0),
+        Color.FromRgb(85,255,255),
+        Color.FromRgb(255,85,85),
+        Color.FromRgb(255,255,255),
+    };
+
+    private async Task CyclePalette()
+    {
+        ActivePalette++;
+        if (ActivePalette > 2) ActivePalette = 0;
+        await GenerateImageFromAddress(ImageAddress);
+    }
+
+    private async Task GenerateImageFromAddress(string address)
+    {
+        Loading = true;
+        await Task.Run(async () =>
+        {
+            var bytes = CompressionHelper.DecompressImageData(address);
+            await GenerateImage(bytes);
+        });
+        Loading = false;
+    }
+
+    private async Task OnClickGenerateRandomImage()
+    {
+        Loading = true;
+        await Task.Run(async () =>
+        {
+            await GenerateRandomImage();
+        });
+        Loading = false;
+    }
+
+    private async Task GenerateRandomImage(int? seed = null)
+    {
+        var rnd = seed.HasValue ? new Random(seed.Value) : new Random();
+        var target = _imageWidth * _imageHeight;
+        var bytes = new byte[target];
+        for (var i = 0; i < target; i++)
+        {
+            bytes[i] = (byte)rnd.Next(4);
+        }
+        
+        await GenerateImage(bytes);
+    }
+    
+    private async Task GenerateImage(byte[] bytes)
+    {
+        var palettes = new[]
+        {
+            _gryPalette,
+            _cmwPalette,
+            _crwPalette
+        };
+        var palette = palettes[ActivePalette];
+
+        var response = ImageHelper.GenerateImage(bytes, palette, _imageWidth, _imageHeight);
+        Image64 = response.Base64Image;
+        ImageAddress = response.Address;
+
+    }
+
+    private void OnCloseExportClick()
+    {
+        ShowExport = false;
+    }
+
+    private void OnOpenExportClick()
+    {
+        ShowExport = true;
+    }
+    
+    private void OnCloseImportClick()
+    {
+        ShowImport = false;
+    }
+
+    private void OnOpenImportClick()
+    {
+        ShowImport = true;
+    }
+
+    private async Task OnImportAddressClick()
+    {
+        if(string.IsNullOrEmpty(ImportImageAddress)) return;
+        Loading = true;
+        await GenerateImageFromAddress(ImportImageAddress);
+        Loading = false;
+        ImportImageAddress = null;
+        ShowImport = false;
+    }
+
+}
+
+
+
+<PageTitle>CGA Babel</PageTitle>
+
+
+<div class="flex flex-col h-screen items-center justify-center bg-gray-800">
+    
+    <div class="rounded-xl overflow-hidden inline-flex flex-col border-gray-500 shadow-black-xl relative ">
+        <div class="bg-gray-600 p-3">
+            <div class="flex">
+                <div class="flex-1">
+                    <button type="button" class="button" @onclick="OnClickGenerateRandomImage">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 512 512" stroke="currentColor" stroke-width="2" fill="currentColor">
+                            <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32" d="M448 341.37V170.61A32 32 0 00432.11 143l-152-88.46a47.94 47.94 0 00-48.24 0L79.89 143A32 32 0 0064 170.61v170.76A32 32 0 0079.89 369l152 88.46a48 48 0 0048.24 0l152-88.46A32 32 0 00448 341.37z"/>
+                            <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32" d="M69 153.99l187 110 187-110M256 463.99v-200"/>
+                            <ellipse cx="256" cy="152" rx="24" ry="16"/>
+                            <ellipse cx="208" cy="296" rx="16" ry="24"/>
+                            <ellipse cx="112" cy="328" rx="16" ry="24"/>
+                            <ellipse cx="304" cy="296" rx="16" ry="24"/>
+                            <ellipse cx="400" cy="240" rx="16" ry="24"/>
+                            <ellipse cx="304" cy="384" rx="16" ry="24"/>
+                            <ellipse cx="400" cy="328" rx="16" ry="24"/>
+                        </svg>
+                    </button>
+                    <button type="button" class="button" @onclick="CyclePalette" title="Cycle palette">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
+                        </svg>
+                    </button>
+
+                </div>
+                <div class="flex-0">
+                    <button class="button" type="button" @onclick="OnOpenExportClick">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                    </button>
+                    <button class="button" type="button" @onclick="OnOpenImportClick">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            
+        </div>
+        <div class="bg-gray-700 p-3">
+            @if (!string.IsNullOrEmpty(Image64))
+            {
+                <img src="@Image64" style="width: 640px; height: 400px; image-rendering: pixelated;" alt="Generated CGA image of babel"/>
+            }
+        </div>
+        
+        @if (ShowExport)
+        {
+            <div class="absolute w-full h-full bg-gray-700 bg-opacity-50 flex flex-col text-gray-300 backdrop-blur-sm p-2">
+                <div class="flex-0 text-right">
+                    <button class="button mb-1" type="button"  @onclick="OnCloseExportClick">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="flex-1">
+                    <textarea class="w-full h-full bg-white rounded border text-xs font-mono p-2 text-gray-700" readonly="readonly" style="resize: none;">@ImageAddress</textarea>
+                </div>
+            </div>
+        }
+        @if (ShowImport)
+        {
+            <div class="absolute w-full h-full bg-gray-700 bg-opacity-50 flex flex-col text-gray-300 backdrop-blur-sm p-2">
+                <div class="flex-0 text-right">
+                    <button class="button mb-1" type="button"  @onclick="OnCloseImportClick">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="flex-1">
+                    <textarea 
+                        class="w-full h-full bg-white rounded border text-xs font-mono p-2 text-gray-800" 
+                        style="resize: none;"
+                        @bind="ImportImageAddress"
+                    >
+                    </textarea>
+                </div>
+                <div class="flex-0 text-right">
+                    <button class="button mt-1" type="button" @onclick="OnImportAddressClick">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        }
+        @if (Loading)
+        {
+            <div class="absolute w-full h-full bg-gray-700 bg-opacity-50 flex flex-col items-center justify-center text-gray-300 backdrop-blur-sm">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 animate-reverse-spin" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                </svg>
+            </div>
+        }
+        
+    </div>
+    
+</div>
