@@ -1,6 +1,7 @@
 ﻿@page "/"
 @using SixLabors.ImageSharp
 @using CGAOB
+@inject IJSRuntime JSRuntime
 @code {
 
     private string? Image64 { get; set; }
@@ -12,6 +13,7 @@
     private bool ShowExport { get; set; } = false;
     private bool ShowImport { get; set; } = false;
     private string ImportImageAddress { get; set; }
+    private bool JustCopied { get; set; }
 
     protected override async Task OnInitializedAsync()
     {
@@ -130,20 +132,32 @@
         ImportImageAddress = null;
         ShowImport = false;
     }
+    
+    private async Task CopyTextToClipboard()
+    {
+        
+        await JSRuntime.InvokeVoidAsync("clipboardCopy.copyText", ImageAddress);
+        JustCopied = true;
+        ShowExport = false;
+        Timer timer = null;
+        timer = new Timer(obj =>
+        {
+            JustCopied = false;
+            timer.Dispose();
+            StateHasChanged();
+        }, null, 1000, Timeout.Infinite);
+    }
 
 }
 
-
-
-<PageTitle>CGA Babel</PageTitle>
-
+<PageTitle>Color Graphics Adapter of Babel</PageTitle>
 
 <div class="flex flex-col h-screen items-center justify-center bg-gray-800">
     
     <div class="rounded-xl overflow-hidden inline-flex flex-col border-gray-500 shadow-black-xl relative ">
         <div class="bg-gray-600 p-3">
             <div class="flex">
-                <div class="flex-1">
+                <div class="flex-1 flex gap-1">
                     <button type="button" class="button" @onclick="OnClickGenerateRandomImage">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" viewBox="0 0 512 512" stroke="currentColor" stroke-width="2" fill="currentColor">
                             <path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="32" d="M448 341.37V170.61A32 32 0 00432.11 143l-152-88.46a47.94 47.94 0 00-48.24 0L79.89 143A32 32 0 0064 170.61v170.76A32 32 0 0079.89 369l152 88.46a48 48 0 0048.24 0l152-88.46A32 32 0 00448 341.37z"/>
@@ -164,11 +178,18 @@
                     </button>
 
                 </div>
-                <div class="flex-0">
+                <div class="flex-0 flex gap-1">
                     <button class="button" type="button" @onclick="OnOpenExportClick">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                        </svg>
+                        @if (JustCopied)
+                        {
+                            <span>Copied</span>
+                        }
+                        else
+                        {
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+                            </svg>    
+                        }
                     </button>
                     <button class="button" type="button" @onclick="OnOpenImportClick">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -197,7 +218,7 @@
                     </button>
                 </div>
                 <div class="flex-1">
-                    <textarea class="w-full h-full bg-white rounded border text-xs font-mono p-2 text-gray-700" readonly="readonly" style="resize: none;">@ImageAddress</textarea>
+                    <textarea class="w-full h-full bg-white rounded border text-xs font-mono p-2 text-gray-700" readonly="readonly" style="resize: none;" @onclick="CopyTextToClipboard">@ImageAddress</textarea>
                 </div>
             </div>
         }
@@ -216,7 +237,8 @@
                         class="w-full h-full bg-white rounded border text-xs font-mono p-2 text-gray-800" 
                         style="resize: none;"
                         @bind="ImportImageAddress"
-                    >
+                        placeholder="Paste here"
+>
                     </textarea>
                 </div>
                 <div class="flex-0 text-right">
