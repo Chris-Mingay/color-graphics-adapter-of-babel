@@ -2,7 +2,6 @@
 @using SixLabors.ImageSharp
 @using CGAOB
 @using System.Numerics
-@using System.Collections
 @inject IJSRuntime JSRuntime
 @code {
 
@@ -122,8 +121,8 @@
         
 
         ActivePalette = new Random().Next(3);
-        //await GenerateRandomImage();
-        await UpdateImage();
+        await GenerateRandomImage();
+        //await UpdateImage();
         await base.OnInitializedAsync();
     }
 
