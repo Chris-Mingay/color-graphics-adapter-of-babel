@@ -15,6 +15,8 @@ public static class ImageHelper
         {
             var image = new Image<Rgba32>(imageWidth, imageHeight);
             var brushes = palette.Select(x => Brushes.Solid(x)).ToArray();
+            
+            image.Mutate(img => img.Fill(brushes[0]));
 
             for (int x = 0; x < imageWidth; x++)
             {
@@ -22,9 +24,10 @@ public static class ImageHelper
                 {
                     var pixelIndex = (y * imageWidth) + x;
                     var brushIndex = bytes[pixelIndex];
+                    if(brushIndex == 0) continue;
+
                     var brush = brushes[brushIndex];
                     var rectangle = new Rectangle(x, y, 1, 1);
-            
                     image.Mutate(img => img.Fill(brush, rectangle));
                 }
             }
@@ -32,8 +35,7 @@ public static class ImageHelper
             image.SaveAsPng(outStream);
 
             var response =
-                new GenerateImageResponse("data:image/png;base64, " + Convert.ToBase64String(outStream.ToArray()),
-                    CompressionHelper.CompressImageData(bytes));
+                new GenerateImageResponse("data:image/png;base64, " + Convert.ToBase64String(outStream.ToArray()));
             return response;
         }
         
