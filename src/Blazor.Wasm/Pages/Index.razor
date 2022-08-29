@@ -66,6 +66,8 @@
 
     private async Task GotoIndex(BigInteger index)
     {
+        if (index < FIRST_INDEX) index = FIRST_INDEX;
+        if (index > LAST_INDEX) index = LAST_INDEX;
         CurrentIndex = index;
         await UpdateImage();
     }
