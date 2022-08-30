@@ -5,11 +5,11 @@
 @inject IJSRuntime JSRuntime
 @code {
 
-    private const int DOUBLE_MULTIPLIER = 10000000;
+        private const int DOUBLE_MULTIPLIER = 10000000;
     private readonly BigInteger HORIZONTAL_INCREMENT = new BigInteger(1);
-    private readonly BigInteger VERTICAL_INCREMENT = BigInteger.Pow(4, 160);
+    private readonly BigInteger VERTICAL_INCREMENT = BigInteger.Pow(16, 160);
     private readonly BigInteger FIRST_INDEX = BigInteger.Zero;
-    private readonly BigInteger LAST_INDEX = BigInteger.Pow(4, 32000);
+    private readonly BigInteger LAST_INDEX = BigInteger.Pow(16, 32000);
     private string ImageAddress => CurrentIndex.ToString();
     private Random rnd = new Random();
 
@@ -19,7 +19,7 @@
     {
         await MoveIndex(-HORIZONTAL_INCREMENT);
     }
-    
+
     private async Task OnDoubleLeftArrowClicked()
     {
         await MoveIndex(-HORIZONTAL_INCREMENT * DOUBLE_MULTIPLIER);
@@ -34,12 +34,12 @@
     {
         await MoveIndex(HORIZONTAL_INCREMENT * DOUBLE_MULTIPLIER);
     }
-    
+
     private async Task OnUpArrowClicked()
     {
         await MoveIndex(-VERTICAL_INCREMENT);
     }
-    
+
     private async Task OnDoubleUpArrowClicked()
     {
         await MoveIndex(-VERTICAL_INCREMENT * DOUBLE_MULTIPLIER);
@@ -49,7 +49,7 @@
     {
         await MoveIndex(VERTICAL_INCREMENT);
     }
-    
+
     private async Task OnDoubleDownArrowClicked()
     {
         await MoveIndex(VERTICAL_INCREMENT * DOUBLE_MULTIPLIER);
@@ -93,16 +93,16 @@
         while (inIndex < bytes.Length)
         {
             var inByte = bytes[inIndex];
-            
-            output[outIndex + 0] = (byte)((inByte & 0b_0000_0011) >> 0);
-            output[outIndex + 1] = (byte)((inByte & 0b_0000_1100) >> 2);
-            output[outIndex + 2] = (byte)((inByte & 0b_0011_0000) >> 4);
-            output[outIndex + 3] = (byte)((inByte & 0b_1100_0000) >> 6);
+
+            output[outIndex + 0] = (byte)((inByte & 0b_0000_1111) >>  0);
+            output[outIndex + 1] = (byte)((inByte & 0b_1111_0000) >>  4);
+            //output[outIndex + 2] = (byte)((inByte & 0b_0011_0000) >>  4);
+            //output[outIndex + 3] = (byte)((inByte & 0b_1100_0000) >>  6);
 
             inIndex++;
-            outIndex += 4;
+            outIndex += 2;
         }
-        
+
         await GenerateImage(output);
     }
 
@@ -120,44 +120,34 @@
     protected override async Task OnInitializedAsync()
     {
         CurrentIndex = BigInteger.Zero;
-        
+
 
         ActivePalette = new Random().Next(3);
         await GenerateRandomImage();
-        //await UpdateImage();
+    //await UpdateImage();
         await base.OnInitializedAsync();
     }
 
-    private readonly Color[] _gryPalette = 
+    private readonly Color[] _tandyPalette =
     {
-        Color.FromRgb(0,0,0),
-        Color.FromRgb(85,255,85),
-        Color.FromRgb(255,85,85),
-        Color.FromRgb(255,255,85),
+        Color.FromRgb(0, 0, 0),
+        Color.FromRgb(0, 0, 170),
+        Color.FromRgb(0, 170, 0),
+        Color.FromRgb(0, 170, 170),
+        Color.FromRgb(170, 0, 0),
+        Color.FromRgb(170, 0, 170),
+        Color.FromRgb(170, 85, 0),
+        Color.FromRgb(170, 170, 170),
+        Color.FromRgb(85, 85, 85),
+        Color.FromRgb(85, 85, 255),
+        Color.FromRgb(85, 255, 85),
+        Color.FromRgb(85, 255, 255),
+        Color.FromRgb(255, 85, 85),
+        Color.FromRgb(255, 85, 255),
+        Color.FromRgb(255, 255, 85),
+        Color.FromRgb(255, 255, 85),
+        Color.FromRgb(255, 255, 255),
     };
-    
-    private readonly Color[] _cmwPalette = 
-    {
-        Color.FromRgb(0,0,0),
-        Color.FromRgb(85,255,255),
-        Color.FromRgb(255,85,255),
-        Color.FromRgb(255,255,255),
-    };
-    
-    private readonly Color[] _crwPalette = 
-    {
-        Color.FromRgb(0,0,0),
-        Color.FromRgb(85,255,255),
-        Color.FromRgb(255,85,85),
-        Color.FromRgb(255,255,255),
-    };
-
-    private async Task CyclePalette()
-    {
-        ActivePalette++;
-        if (ActivePalette > 2) ActivePalette = 0;
-        await UpdateImage();
-    }
 
     private async Task OnClickGenerateRandomImage()
     {
@@ -177,17 +167,9 @@
     
     private async Task GenerateImage(byte[] bytes)
     {
-        var palettes = new[]
-        {
-            _gryPalette,
-            _cmwPalette,
-            _crwPalette
-        };
-        var palette = palettes[ActivePalette];
-
-        var response = ImageHelper.GenerateImage(bytes, palette, _imageWidth, _imageHeight);
+        var response = ImageHelper.GenerateImage(bytes, _tandyPalette, _imageWidth, _imageHeight);
+        
         Image64 = response.Base64Image;
-
     }
 
     private void OnCloseExportClick()
@@ -263,12 +245,7 @@
                             <ellipse cx="400" cy="328" rx="16" ry="24"/>
                         </svg>
                     </button>
-                    <button type="button" class="button" @onclick="CyclePalette" title="Cycle palette">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01"/>
-                        </svg>
-                    </button>
-
+                    
                 </div>
                 <div class="flex-0 flex gap-1">
                     <button class="button" type="button" @onclick="OnOpenExportClick" title="Export Image">

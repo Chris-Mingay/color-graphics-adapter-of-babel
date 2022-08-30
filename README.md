@@ -1,4 +1,4 @@
-# Color Graphics Adapter of Babel
+# ~~Color~~ Tandy Graphics Adapter of Babel
 
 Every 160x200 screen of every CGA implementation of every Sierra Adventure game ever (and a few other ones too). Brought to you via Blazor.Wasm.
 
@@ -12,7 +12,9 @@ I watched a YouTube video by Solar Sands called [The Canvas of Babel](https://ww
 
 My direct inspiration is [The Universal Slideshow](http://babelia.libraryofbabel.info/slideshow.html) by Jonathan Basile.
 
-As of the time of writing, I'm not even convinced my implementation can actually show every possible image ever, certainly not via the random image interface. Hopefully this is something I manage to figure out as part of the fun!
+~~As of the time of writing, I'm not even convinced my implementation can actually show every possible image ever, certainly not via the random image interface. Hopefully this is something I manage to figure out as part of the fun!~~
+
+I believe it does actually index every possible image and every single one can be referenced randomly (if you've got the time).
 
 ## Demo
 
